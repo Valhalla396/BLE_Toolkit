@@ -33,7 +33,8 @@ class BLEManager:
         print(f"Verbunden mit {target_device.name}")
         return self.client
 
-    async def read_characteristic(self):
+    async def get_characteristics(self):
+        """Scannt und gibt verfügbare Charakteristiken zurück."""
         if not self.client:
             raise Exception("Nicht verbunden.")
 
@@ -42,47 +43,26 @@ class BLEManager:
             await self.client.get_services()
             services = self.client.services
 
-        test_service = next((s for s in services if s.uuid == TARGET_SERVICE_UUID), None)
-        if not test_service:
-            raise Exception(f"Service {TARGET_SERVICE_UUID} nicht gefunden.")
+        characteristics = []
+        for service in services:
+            for char in service.characteristics:
+                characteristics.append(char)
+        return characteristics
 
-        characteristic = next(
-            (c for c in test_service.characteristics if c.uuid == READ_CHARACTERISTIC_UUID), None
-        )
-        if not characteristic:
-            raise Exception(f"Charakteristik {READ_CHARACTERISTIC_UUID} nicht gefunden.")
-
-        if "read" in characteristic.properties:
-            value = await self.client.read_gatt_char(characteristic.uuid)
-            print(f"Debug: Gelesener Wert - {value}")  # Debugging
-            return value.decode("utf-8")
-        else:
-            raise Exception(f"Charakteristik {READ_CHARACTERISTIC_UUID} ist nicht lesbar.")
-
-    async def write_characteristic(self, data):
+    async def read_characteristic(self, uuid):
+        """Liest eine Charakteristik basierend auf der UUID."""
         if not self.client:
             raise Exception("Nicht verbunden.")
+        value = await self.client.read_gatt_char(uuid)
+        print(f"Debug: Gelesener Wert - {value}")  # Debugging
+        return value.decode("utf-8")
 
-        services = self.client.services
-        if not services:
-            await self.client.get_services()
-            services = self.client.services
-
-        test_service = next((s for s in services if s.uuid == TARGET_SERVICE_UUID), None)
-        if not test_service:
-            raise Exception(f"Service {TARGET_SERVICE_UUID} nicht gefunden.")
-
-        characteristic = next(
-            (c for c in test_service.characteristics if c.uuid == WRITE_CHARACTERISTIC_UUID), None
-        )
-        if not characteristic:
-            raise Exception(f"Charakteristik {WRITE_CHARACTERISTIC_UUID} nicht gefunden.")
-
-        if "write" in characteristic.properties:
-            await self.client.write_gatt_char(characteristic.uuid, data.encode("utf-8"))
-            print(f"Daten geschrieben: {data}")
-        else:
-            raise Exception(f"Charakteristik {WRITE_CHARACTERISTIC_UUID} ist nicht beschreibbar.")
+    async def write_characteristic(self, uuid, data):
+        """Schreibt Daten in eine Charakteristik basierend auf der UUID."""
+        if not self.client:
+            raise Exception("Nicht verbunden.")
+        await self.client.write_gatt_char(uuid, data.encode("utf-8"))
+        print(f"Daten geschrieben: {data}")
 
     async def disconnect(self):
         if self.client:
