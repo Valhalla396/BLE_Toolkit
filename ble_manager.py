@@ -1,36 +1,20 @@
 import asyncio
-from bleak import BleakScanner, BleakClient, AdvertisementData
+from bleak import BleakScanner, BleakClient
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-
-# UUIDs
-ADVERTISING_SERVICE_UUID = "c8bac71f-579e-4d69-b18e-83639e15e705"  # UUID im Advertising
-TARGET_SERVICE_UUID = "12345678-1234-5678-1234-56789abcdef0"  # Ziel-Service
-READ_CHARACTERISTIC_UUID = "abcdef01-1234-5678-1234-56789abcdef0"  # Ziel-Charakteristik (Lesen)
-WRITE_CHARACTERISTIC_UUID = "abcdef02-1234-5678-1234-56789abcdef0"  # Ziel-Charakteristik (Schreiben)
-
 
 class BLEManager:
     def __init__(self):
         self.client = None
 
-    async def find_and_connect(self):
-        print("Scanne nach BLE-Geräten...")
+    async def scan(self):
         devices = await BleakScanner.discover()
+        return devices
 
-        target_device = None
-        for device in devices:
-            if ADVERTISING_SERVICE_UUID in device.metadata["uuids"]:
-                target_device = device
-                print(f"Gerät gefunden: {device.name} - {device.address}")
-                break
-
-        if not target_device:
-            raise Exception("Kein Gerät mit der beworbenen UUID gefunden.")
-
-        self.client = BleakClient(target_device.address)
+    async def connect_to_device(self, address):
+        self.client = BleakClient(address)
         await self.client.connect()
-        print(f"Verbunden mit {target_device.name}")
+        print(f"Verbunden mit {address}")
         return self.client
 
     async def get_characteristics(self):

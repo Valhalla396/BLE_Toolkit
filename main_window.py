@@ -45,6 +45,10 @@ class MainWindow(QMainWindow):
         self.characteristics_tree.setHeaderLabels(["UUID", "Eigenschaften"])
         self.characteristics_tree.setSelectionMode(QTreeWidget.MultiSelection)
 
+        # Scan-Button und Geräte-Dropdown
+        self.scan_button = QPushButton("Scan", self)
+        self.device_dropdown = QComboBox(self)
+
         # Layouts
         main_layout = QVBoxLayout()
         connection_layout = QHBoxLayout()
@@ -54,6 +58,8 @@ class MainWindow(QMainWindow):
 
         # Connection Group
         connection_group = QGroupBox("Verbindung")
+        connection_layout.addWidget(self.scan_button)
+        connection_layout.addWidget(self.device_dropdown)
         connection_layout.addWidget(self.connect_button)
         connection_layout.addWidget(self.disconnect_button)
         connection_group.setLayout(connection_layout)
@@ -105,13 +111,27 @@ class MainWindow(QMainWindow):
         self.write_button.clicked.connect(self.write_characteristic)
         self.start_loop_button.clicked.connect(self.start_loop)
         self.stop_loop_button.clicked.connect(self.stop_loop)
+        self.scan_button.clicked.connect(self.scan_devices)
+
+    @asyncSlot()
+    async def scan_devices(self):
+        self.status_label.setText("Status: Scanne...")
+        try:
+            devices = await self.ble_manager.scan()
+            self.device_dropdown.clear()
+            for d in devices:
+                self.device_dropdown.addItem(f"{d.name} ({d.address})", d.address)
+            self.status_label.setText("Status: Scan abgeschlossen")
+        except Exception as e:
+            self.status_label.setText(f"Status: Fehler - {str(e)}")
 
     @asyncSlot()
     async def connect_device(self):
-        """Verbindet sich mit dem BLE-Gerät."""
-        self.status_label.setText("Status: Scanne...")
+        self.status_label.setText("Status: Verbinde...")
         try:
-            await self.ble_manager.find_and_connect()
+            selected_index = self.device_dropdown.currentIndex()
+            address = self.device_dropdown.itemData(selected_index)
+            await self.ble_manager.connect_to_device(address)
             self.status_label.setText("Status: Verbunden")
             self.connect_button.setEnabled(False)
             self.disconnect_button.setEnabled(True)
